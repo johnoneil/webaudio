@@ -45,7 +45,7 @@ class Sound {
     var samples = this._system._samples[this._samplesID];
     this._source.buffer = samples._data;
     this._source.connect(this._gain);
-    this._gain.connect(this._system._audioCtx.destination);
+    this._gain.connect(this._system._output);
     this._source.start(0);
   }
   stop() {
@@ -103,6 +103,10 @@ class SoundSystem {
       console.error("Failed to create proper web audio context.");
       return;
     }
+    // set up a global gain for volume/mute
+    this._output = this._audioCtx.createGain();
+    this._output.connect(this._audioCtx.destination);
+
     // dictionary of sound samples data so multiple playing sounds can run off the same
     // decoded audio data.
     this._samples = {};
@@ -115,6 +119,9 @@ class SoundSystem {
     
     this._nextSamplesID = 1;
     this._nextSoundID = 1;
+
+    // track globalGain for unmute purposes (unmute to previous gain value)
+    this._prevGain = this._output.gain.value;
   }
 
   // Loads and decodes sound from a single url
@@ -199,6 +206,29 @@ class SoundSystem {
     var samplesID = sound._samplesID;
     this._do(this, samplesID, soundID, function(){sound.gain(value);});
   }
+  globalGain(value) {
+    console.log("setting global gain to : ", value);
+    // no need for async
+    if(value < 0 || value > 1) {
+      console.error("trying to set global gain to value: ", value);
+    }
+    this._output.gain.value = value;
+    //this._prevGain = this._output.gain.value;
+  }
+  mute() {
+    console.log("muting global.");
+
+    this._prevGain = this._output.gain.value;
+    this.globalGain(0);
+  }
+  unmute() {
+    console.log("un-muting global");
+    // warn on a unmuting to a low gain value.
+    if(this._prevGain < 0.01) {
+      console.log("unmuting to a very low gain value.");
+    }
+    this.globalGain(this._prevGain);
+  }
 
 }
 
@@ -211,9 +241,19 @@ window.setTimeout(function(){sys.stop(soundID);}, 500);
 window.setTimeout(function(){
   soundID = sys.play(samplesID);
   }, 2000);
+//window.setTimeout(function(){
+//  sys.gain(soundID, 0.25);
+//}, 2200);
 window.setTimeout(function(){
-  sys.gain(soundID, 0.25);
-}, 2200);
+  sys.mute();
+}, 2100);
+window.setTimeout(function(){
+  sys.unmute();
+}, 2800);
+
+
+
+
 
 
 
