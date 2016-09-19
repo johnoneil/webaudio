@@ -70,12 +70,15 @@ class PlayingSound {
   }
 };
 
-class SoundSamples {
-  constructor(system, url, id) {
-    this._system = system;
+class Samples {
+  constructor(url, id) {
     this._url = url;
     this._id = id;
+    this._data = null;
+
+    this._promise = null;
   }
+
 
 
 };
@@ -189,16 +192,20 @@ class SoundSystem {
     var that = this;
     var id = this._nextSamplesID;
     this._nextSamplesID++;
+
+    var samples = new Samples(url, id);
   
-    this._promise = asyncLoad(url)
+    samples._promise = asyncLoad(url)
       .then(asyncDecode)
       .then(function(data)
       {
-        that._samples[id] = data;
+        samples._data = data;
       })
       .then(function(value) {
-        that._promise = null;
+        samples._promise = null;
       });
+
+    this._samples[id] = samples;
 
    return id;
   }
@@ -216,17 +223,19 @@ class SoundSystem {
     var id = this._nextSoundID;
     this._nextSoundID++;
 
+    var samples = this._samples[samplesID];
 
-    if(this._promise)
+
+    if(samples._promise)
     {
       console.log("pending operations so initiating an async play...");
 
-      this._promise.then(function(){
+      samples._promise.then(function(){
 
         console.log("Doing delayed play of data with samplesID ", samplesID);
 
         that._source = that._audioCtx.createBufferSource();
-        that._source.buffer = that._samples[samplesID];
+        that._source.buffer = samples._data;
         that._source.connect(that._audioCtx.destination);
         that._source.start(0);
       });
@@ -234,7 +243,7 @@ class SoundSystem {
       console.log("no pending operations so doing a synchronous play.");
 
       that._source = that._audioCtx.createBufferSource();
-      that._source.buffer = that._samples[samplesID];
+      that._source.buffer = samples._data;
       that._source.connect(that._audioCtx.destination);
       that._source.start(0);
     }
