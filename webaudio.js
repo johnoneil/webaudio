@@ -29,45 +29,24 @@ function makeRequest (method, url) {
   });
 }
 
-/*
-class SoundSample {
-  constructor(soundID) {
-    this._id = soundID;
-    this._buffer = null;
-  }
-  get SoundID() {
-    return this._id;
-  }
-  get Buffer() {
-    return this._buffer;
-  }
-
-}
-
-class PlayingSound {
-  constructor(webaudio, id) {
-    this._webaudio = webaudio;
-    this._id = id;
-    // _source is a buffer of audio data created via audioCtx.createBufferSource();
-    this._source;
-  }
-
-  Play() {
-    this._source.start(0);
-  }
-
-  Stop() {
-    this._source.stop();
-  }
-}
-*/
-
 class Sound {
-  constructor(id) {
+  constructor(system, id, samplesID) {
     this._id = id;
-
+    this._samplesID = samplesID;
     this._source = null;
-  }
+    this._system = system;
+  };
+
+  play() {
+    console.log("Doing delayed play of data with samplesID ", samplesID);
+
+    this._source = this._system._audioCtx.createBufferSource();
+    var samples = this._system._samples[this._samplesID];
+    this._source.buffer = samples._data;
+    this._source.connect(this._system._audioCtx.destination);
+    this._source.start(0);
+  } 
+
 };
 
 class Samples {
@@ -78,9 +57,6 @@ class Samples {
 
     this._promise = null;
   }
-
-
-
 };
 
 
@@ -89,12 +65,6 @@ function asyncLoad(url) {
   console.log("initiating asyncLoad on url ", url);
   
   return makeRequest("GET", url);
-    //.then(
-    //  function(rawData) {
-    //    sound._system._rawData[sound._samplesID] = rawData;
-    //    return sound;
-    //  }
-    //);
 }
 
 
@@ -109,50 +79,9 @@ function asyncDecode(rawData) {
         return value;
       }
   );
-  //return sound._system._audioCtx.decodeAudioData(rawData);
-      //.then( function(decodedAudioData) {
-      //  soundSystem._decodedAudioData[sound._samplesID] = decodedAudioData;
-      //  return sound; 
-      //}
-  //);
 }
 
 
-
-
-/*
-asyncPlay(sound) {
-  return new Promise(function(resolve, reject) {
-    if(!sound._samplesID in sound._system._decodedAudioData) {
-      console.error("SoundID ", sound._samplesID, " is not a valid sound sample.");
-      reject();
-    }
-    sound._source = sound._system._audioCtx.createBufferSource();
-    sound._source.buffer = sound._system._decodedAudioData[sound._sampleID];
-    sound._source.start(0);
-    resolve(sound);
-  });
-}
-
-
-
-function asyncPause(soundSystem, sound) {
-  
-}
-
-function asyncUnpause(soundSystem, sound) {
-
-}
-
-function asyncMute(soundSystem, sound) {
-  
-}
-
-function asyncSetVolume(soundSystem, sound) {
-
-}
-
-*/
 
 class SoundSystem {
   constructor() {
@@ -174,14 +103,6 @@ class SoundSystem {
     this._nextSamplesID = 1;
     this._nextSoundID = 1;
   }
-
-  //do(nextPromise) {
-  //  if(this._promise) {
-  //    this._promise.then(nextPromise);
-  //  }else{
-  //    this._promise = nextPromise;
-  //  } 
-  //}
 
   // Loads and decodes sound from a single url
   // can complete asynchronously in the future.
@@ -216,7 +137,7 @@ class SoundSystem {
     
     if(!samplesID in this._samples)
     {
-      console.error("no samplesid in _samples.");
+      console.error("no samples id in _samples.");
       return;
     }
     
@@ -224,28 +145,18 @@ class SoundSystem {
     this._nextSoundID++;
 
     var samples = this._samples[samplesID];
-    var sound = new Sound(id);
+    var sound = new Sound(this, id, samplesID);
 
     if(samples._promise)
     {
       console.log("pending operations so initiating an async play...");
 
       samples._promise.then(function(){
-
-        console.log("Doing delayed play of data with samplesID ", samplesID);
-
-        sound._source = that._audioCtx.createBufferSource();
-        sound._source.buffer = samples._data;
-        sound._source.connect(that._audioCtx.destination);
-        sound._source.start(0);
+        sound.play();
       });
     }else{
       console.log("no pending operations so doing a synchronous play.");
-
-      sound._source = that._audioCtx.createBufferSource();
-      sound._source.buffer = samples._data;
-      sound._source.connect(that._audioCtx.destination);
-      sound._source.start(0);
+      sound.play();
     }
    
     return id;
