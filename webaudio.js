@@ -45,7 +45,11 @@ class Sound {
     this._source.buffer = samples._data;
     this._source.connect(this._system._audioCtx.destination);
     this._source.start(0);
-  } 
+  }
+  stop() {
+    console.log("stopping sound with id: ", this._id);
+    this._source.stop(0);
+  }
 
 };
 
@@ -95,7 +99,7 @@ class SoundSystem {
     this._samples = {};
 
     // Objects representing actually playing sounds.
-    this._playingSounds = {};
+    this._sounds = {};
     
     // an outstanding promise for some async action going on
     this._promise = null;
@@ -131,6 +135,20 @@ class SoundSystem {
    return id;
   }
 
+  _do(system, samplesID, soundID, f) {
+    console.log("_do ", samplesID, " ", soundID);
+
+    var samples = system._samples[samplesID];
+    var sound = system._sounds[soundID];
+    if(samples._promise) {
+      samples._promise.then(function(){
+        f();
+      });
+    }else{
+      f();
+    }
+  }
+
   play(samplesID) {
 
     var that = this;
@@ -146,20 +164,21 @@ class SoundSystem {
 
     var samples = this._samples[samplesID];
     var sound = new Sound(this, id, samplesID);
+    this._sounds[id] = sound;
+    
+    this._do(this, samplesID, id, function(){sound.play();});
 
-    if(samples._promise)
-    {
-      console.log("pending operations so initiating an async play...");
-
-      samples._promise.then(function(){
-        sound.play();
-      });
-    }else{
-      console.log("no pending operations so doing a synchronous play.");
-      sound.play();
-    }
-   
     return id;
+  }
+
+  stop(soundID) {
+    if(!soundID in this._sounds) {
+      console.error("Can't play sound with id ", soundID);
+      return;
+    }
+    var sound = this._sounds[soundID];
+    var samplesID = sound._samplesID;
+    this._do(this, samplesID, soundID, function(){sound.stop();});
   }
 
 }
@@ -168,7 +187,11 @@ var sys = new SoundSystem();
 
 var samplesID = sys.load("bear.mp3");
 var soundID = sys.play(samplesID);
-// sys.stop(soundID);
-// sys.free(samplesID);
+window.setTimeout(function(){sys.stop(soundID);}, 500);
+window.setTimeout(function(){sys.free(samplesID);}, 2000);
+window.setTimeout(function(){
+  sys.play(samplesID);
+  }, 2000);
+
 
 
