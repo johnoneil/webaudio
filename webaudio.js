@@ -103,6 +103,7 @@ function asyncDecode(rawData) {
   return sys._audioCtx.decodeAudioData(rawData).then(
       function(value) {
         console.log("successfully completed our audio decoding.");
+        return value;
       }
   );
   //return sound._system._audioCtx.decodeAudioData(rawData);
@@ -159,13 +160,16 @@ class SoundSystem {
     }
     // dictionary of sound samples data so multiple playing sounds can run off the same
     // decoded audio data.
-    this._soundSamples = {};
+    this._samples = {};
 
     // Objects representing actually playing sounds.
     this._playingSounds = {};
     
     // an outstanding promise for some async action going on
     this._promise = null;
+    
+    this._nextSamplesID = 1;
+    this._nextSoundID = 1;
   }
 
   //do(nextPromise) {
@@ -181,19 +185,66 @@ class SoundSystem {
   // Returns a soundSampleID that can be used to play those samples in a sound
   // at some point in the future;
   load(url) {
-    //if(url in this._soundSamples) {
-    //  return this._soundSamples[url];
-    //}
-    // initiate an async fetch and decode of sound data
-    asyncLoad(url)
-      .then(asyncDecode);
+
+    var that = this;
+    var id = that._nextSamplesID;
+    that._nextSamplesID++;
+  
+    that._promise = asyncLoad(url)
+      .then(asyncDecode)
+      .then(function(data)
+      {
+        that._samples[id] = data;
+      })
+      .then(function(value) {
+        that._promise = null;
+      });
+
+   return id;
+  }
+
+  play(samplesID) {
+
+    var that = this;
+
+    if(!samplesID in that._samples)
+    {
+      console.error("no samplesid in _samples.");
+      return;
+    }
+
+    if(that._promise)
+    {
+      console.log("pending operations so initiating an async play...");
+
+      that._promise.then(function(){
+        that._source = that._audioCtx.createBufferSource();
+        that._source.buffer = that._samples[samplesID];
+        that._source.connect(that._audioCtx.destination);
+        that._source.start(0);
+      });
+    }else{
+      console.log("no pending operations so doing a synchronous play.");
+
+      that._source = that._audioCtx.createBufferSource();
+      that._source.buffer = that._samples[samplesID];
+      that._source.connect(that._audioCtx.destination);
+      that._source.start(0);
+    }
+    
+    var id = this._nextSoundID;
+    this._nextSoundID++;
+
+    return id;
   }
 
 }
 
 var sys = new SoundSystem();
 
-sys.load("bear.mp3");
-
+var samplesID = sys.load("bear.mp3");
+var soundID = sys.play(samplesID);
+// sys.stop(soundID);
+// sys.free(samplesID);
 
 
