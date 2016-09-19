@@ -182,15 +182,15 @@ class SoundSystem {
 
   // Loads and decodes sound from a single url
   // can complete asynchronously in the future.
-  // Returns a soundSampleID that can be used to play those samples in a sound
+  // Returns a soundSampleID this can be used to play those samples in a sound
   // at some point in the future;
   load(url) {
 
     var that = this;
-    var id = that._nextSamplesID;
-    that._nextSamplesID++;
+    var id = this._nextSamplesID;
+    this._nextSamplesID++;
   
-    that._promise = asyncLoad(url)
+    this._promise = asyncLoad(url)
       .then(asyncDecode)
       .then(function(data)
       {
@@ -206,18 +206,25 @@ class SoundSystem {
   play(samplesID) {
 
     var that = this;
-
-    if(!samplesID in that._samples)
+    
+    if(!samplesID in this._samples)
     {
       console.error("no samplesid in _samples.");
       return;
     }
+    
+    var id = this._nextSoundID;
+    this._nextSoundID++;
 
-    if(that._promise)
+
+    if(this._promise)
     {
       console.log("pending operations so initiating an async play...");
 
-      that._promise.then(function(){
+      this._promise.then(function(){
+
+        console.log("Doing delayed play of data with samplesID ", samplesID);
+
         that._source = that._audioCtx.createBufferSource();
         that._source.buffer = that._samples[samplesID];
         that._source.connect(that._audioCtx.destination);
@@ -231,10 +238,7 @@ class SoundSystem {
       that._source.connect(that._audioCtx.destination);
       that._source.start(0);
     }
-    
-    var id = this._nextSoundID;
-    this._nextSoundID++;
-
+   
     return id;
   }
 
