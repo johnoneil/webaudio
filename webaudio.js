@@ -36,20 +36,29 @@ class Sound {
     this._source = null;
     this._system = system;
     this._gain = system._audioCtx.createGain();
+    // this might be incorrect, but we only create Sound objects when playing them
+    this._playing = true;
   };
 
   play() {
     console.log("Doing delayed play of data with samplesID ", samplesID);
+    var that = this;
 
     this._source = this._system._audioCtx.createBufferSource();
     var samples = this._system._samples[this._samplesID];
     this._source.buffer = samples._data;
     this._source.connect(this._gain);
     this._gain.connect(this._system._output);
+    this._source.onended = function() {
+      console.log("sound with id: ", that._id," is done playing...");
+      that._playing = false;
+    };
     this._source.start(0);
+    this._playing = true;
   }
   stop() {
     console.log("stopping sound with id: ", this._id);
+    this._playing = false;
     this._source.stop(0);
   }
   gain(value) {
@@ -58,6 +67,10 @@ class Sound {
       console.error("do you really want a gain value of ", value);
     }
     this._gain.gain.value = value;
+  }
+  free() {
+    delete this._system._sounds[id];
+    //delete this._system._samples[this._samplesID];
   }
 
 };
@@ -69,8 +82,8 @@ class Samples {
     this._data = null;
 
     this._promise = null;
-  }
-};
+  };
+}
 
 
 function asyncLoad(url) {
@@ -230,26 +243,52 @@ class SoundSystem {
     this.globalGain(this._prevGain);
   }
 
+  isPlaying(soundID) {
+    if(!soundID in this._sounds) {
+      console.error("isPlaying called on soundID that does not exist.");
+      return;
+    }
+    var sound = this._sounds[soundID];
+    return sound.isPlaying();
+  }
+
+  free(soundID) {
+    // free all resources for a given sound.
+    // note this is done ASYNC since we may not have even finished loading/playing the sound yet!
+    if(!soundID in this._sounds) {
+      console.error("can't free a sound that doesn't exist!");
+      return;
+    }
+    var sound = this._sounds[soundID];
+    var that = this;
+    this._do(this, sound._samplesID, soundID, function(){
+      console.log("cleaning up resources for soundid: ", soundID);
+      delete that._sounds[soundID];
+      delete that._samples[sound._samplesID];
+    });
+  }
+
 }
 
 var sys = new SoundSystem();
 
 var samplesID = sys.load("bear.mp3");
 var soundID = sys.play(samplesID);
-window.setTimeout(function(){sys.stop(soundID);}, 500);
+sys.free(soundID);
+//window.setTimeout(function(){sys.stop(soundID);}, 500);
 //window.setTimeout(function(){sys.free(samplesID);}, 2000);
-window.setTimeout(function(){
-  soundID = sys.play(samplesID);
-  }, 2000);
+//window.setTimeout(function(){
+//  soundID = sys.play(samplesID);
+//  }, 2000);
 //window.setTimeout(function(){
 //  sys.gain(soundID, 0.25);
 //}, 2200);
-window.setTimeout(function(){
-  sys.mute();
-}, 2100);
-window.setTimeout(function(){
-  sys.unmute();
-}, 2800);
+//window.setTimeout(function(){
+//  sys.mute();
+//}, 2100);
+//window.setTimeout(function(){
+//  sys.unmute();
+//}, 2800);
 
 
 
