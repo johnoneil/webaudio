@@ -62,11 +62,11 @@ class PlayingSound {
 }
 */
 
-class PlayingSound {
-  constructor(system, url, id) {
-    this._system = system;
-    this._url = url;
+class Sound {
+  constructor(id) {
     this._id = id;
+
+    this._source = null;
   }
 };
 
@@ -224,7 +224,7 @@ class SoundSystem {
     this._nextSoundID++;
 
     var samples = this._samples[samplesID];
-
+    var sound = new Sound(id);
 
     if(samples._promise)
     {
@@ -234,18 +234,18 @@ class SoundSystem {
 
         console.log("Doing delayed play of data with samplesID ", samplesID);
 
-        that._source = that._audioCtx.createBufferSource();
-        that._source.buffer = samples._data;
-        that._source.connect(that._audioCtx.destination);
-        that._source.start(0);
+        sound._source = that._audioCtx.createBufferSource();
+        sound._source.buffer = samples._data;
+        sound._source.connect(that._audioCtx.destination);
+        sound._source.start(0);
       });
     }else{
       console.log("no pending operations so doing a synchronous play.");
 
-      that._source = that._audioCtx.createBufferSource();
-      that._source.buffer = samples._data;
-      that._source.connect(that._audioCtx.destination);
-      that._source.start(0);
+      sound._source = that._audioCtx.createBufferSource();
+      sound._source.buffer = samples._data;
+      sound._source.connect(that._audioCtx.destination);
+      sound._source.start(0);
     }
    
     return id;
