@@ -35,6 +35,7 @@ class Sound {
     this._samplesID = samplesID;
     this._source = null;
     this._system = system;
+    this._gain = system._audioCtx.createGain();
   };
 
   play() {
@@ -43,12 +44,20 @@ class Sound {
     this._source = this._system._audioCtx.createBufferSource();
     var samples = this._system._samples[this._samplesID];
     this._source.buffer = samples._data;
-    this._source.connect(this._system._audioCtx.destination);
+    this._source.connect(this._gain);
+    this._gain.connect(this._system._audioCtx.destination);
     this._source.start(0);
   }
   stop() {
     console.log("stopping sound with id: ", this._id);
     this._source.stop(0);
+  }
+  gain(value) {
+    console.log("setting gain on sound with id: ", this._id," to: ",value);
+    if(value < 0.0 || value >1.0) {
+      console.error("do you really want a gain value of ", value);
+    }
+    this._gain.gain.value = value;
   }
 
 };
@@ -181,6 +190,16 @@ class SoundSystem {
     this._do(this, samplesID, soundID, function(){sound.stop();});
   }
 
+  gain(soundID, value) {
+    if(!soundID in this._sounds) {
+      console.error("can't find sound with id to set gain.");
+      return;
+    }
+    var sound = this._sounds[soundID];
+    var samplesID = sound._samplesID;
+    this._do(this, samplesID, soundID, function(){sound.gain(value);});
+  }
+
 }
 
 var sys = new SoundSystem();
@@ -188,10 +207,13 @@ var sys = new SoundSystem();
 var samplesID = sys.load("bear.mp3");
 var soundID = sys.play(samplesID);
 window.setTimeout(function(){sys.stop(soundID);}, 500);
-window.setTimeout(function(){sys.free(samplesID);}, 2000);
+//window.setTimeout(function(){sys.free(samplesID);}, 2000);
 window.setTimeout(function(){
-  sys.play(samplesID);
+  soundID = sys.play(samplesID);
   }, 2000);
+window.setTimeout(function(){
+  sys.gain(soundID, 0.25);
+}, 2200);
 
 
 
